@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Spent</title>
+  <meta name="description" content="A calm, simple spending tracker.">
+
+  <!-- Installable app -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Spent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#F4F1EA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0E0E0F" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <link rel="preload" href="fonts/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ADD -->
+  <main id="v-add" class="view active" data-accent="coral">
+    <div class="top">
+      <label class="pill when">
+        <span id="add-date-label">Today</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <input id="add-date" type="date" aria-label="Change date">
+      </label>
+    </div>
+
+    <h1 class="display c-coral">Spent?</h1>
+
+    <label class="amount" id="amt-wrap">
+      <span class="cur" data-cur></span>
+      <input id="amt" type="text" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Amount">
+    </label>
+
+    <input id="note" class="field" type="text" placeholder="On what?" maxlength="80" autocomplete="off" enterkeyhint="done" aria-label="What was it for">
+
+    <p class="label">Category</p>
+    <div id="add-cats" class="chips"></div>
+
+    <button id="save" class="btn">Save</button>
+
+    <p class="sofar"><span id="sofar-label">Today so far</span> <b id="sofar"></b></p>
+  </main>
+
+  <!-- VIEW -->
+  <main id="v-view" class="view" data-accent="violet">
+    <div class="scroller" id="periods"></div>
+
+    <div class="stepper" id="stepper">
+      <button class="round" id="prev" aria-label="Previous">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M11 3.5 5.5 9l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span id="period-label"></span>
+      <button class="round" id="next" aria-label="Next">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M7 3.5 12.5 9 7 14.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div class="range" id="range" hidden>
+      <label class="pill when"><small>From</small> <span id="from-label"></span><input id="from" type="date" aria-label="From date"></label>
+      <label class="pill when"><small>To</small> <span id="to-label"></span><input id="to" type="date" aria-label="To date"></label>
+    </div>
+
+    <div class="scroller" id="view-cats"></div>
+
+    <section class="total">
+      <p class="eyebrow" id="total-caption"></p>
+      <h1 class="display c-violet" id="total"></h1>
+      <p class="muted" id="total-count"></p>
+    </section>
+
+    <div class="seg" id="seg"></div>
+    <div id="table"></div>
+  </main>
+
+  <!-- LIMITS -->
+  <main id="v-limits" class="view" data-accent="amber">
+    <h1 class="display c-amber">Limits</h1>
+    <p class="lede">Set a ceiling. Get a ping the moment you go over.</p>
+    <div id="notif"></div>
+    <div id="limits"></div>
+    <button class="btn ghost" id="add-limit">+ New limit</button>
+  </main>
+
+  <!-- SETUP -->
+  <main id="v-setup" class="view" data-accent="green">
+    <h1 class="display c-green">Setup</h1>
+    <div id="setup"></div>
+  </main>
+
+  <nav class="nav" aria-label="Main">
+    <div class="nav-inner">
+      <button data-tab="add" class="on">Add</button>
+      <button data-tab="view">View</button>
+      <button data-tab="limits">Limits</button>
+      <button data-tab="setup">Setup</button>
+    </div>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
