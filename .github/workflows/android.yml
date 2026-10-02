@@ -1,0 +1,78 @@
+name: Android APK
+
+# Builds the Android app from the web app in public/ and publishes
+# Spent.apk as a GitHub Release you can download on your phone.
+on:
+  push:
+    branches: [main, claude/amazing-franklin-w8as1h]
+    paths:
+      - 'public/**'
+      - 'assets/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'android-signing/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Create Android project
+        run: |
+          npx cap add android
+          npx capacitor-assets generate --android
+          npx cap sync android
+
+      - name: Set version
+        run: |
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+          grep -n "versionCode\|versionName" android/app/build.gradle
+
+      # Same signing key every build, so new versions install as updates
+      # (keeping your data) instead of needing an uninstall.
+      - name: Use stable signing key
+        run: |
+          mkdir -p ~/.android
+          cp android-signing/debug.keystore ~/.android/debug.keystore
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../Spent.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Spent-apk
+          path: Spent.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v${{ github.run_number }}
+          name: Spent for Android (build ${{ github.run_number }})
+          body: |
+            Download **Spent.apk** below on your Android phone, open it, and allow installing from this source.
+            Built from ${{ github.sha }} on ${{ github.ref_name }}.
+          files: Spent.apk
+          make_latest: true

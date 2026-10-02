@@ -1,0 +1,13 @@
+{
+  "appId": "app.brokebudget.spent",
+  "appName": "Spent",
+  "webDir": "public",
+  "android": {
+    "backgroundColor": "#F4F1EA"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "iconColor": "#FF5A3C"
+    }
+  }
+}

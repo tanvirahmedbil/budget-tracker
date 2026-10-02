@@ -38,6 +38,25 @@ No accounts, no servers, no AI — just simple filters.
 - **Android** – open the site in **Chrome** → **⋮** → **Install app**
   (or use **Setup → Install Spent**).
 
+## Android app (APK)
+
+Every push that changes the app makes GitHub build a real Android app
+(`.github/workflows/android.yml`, using Capacitor). To install it:
+
+1. On your Android phone, open the **Releases** page of this repo and
+   download **Spent.apk** from the newest release.
+2. Open the file and allow installing from your browser/files app when asked.
+3. Later builds install as updates on top and keep your data.
+
+The app works offline, sends real Android notifications for limits, and shares
+CSV/backup files through the normal Android share sheet. Its data is separate
+from the website's, so use **Back up** on the website → **Restore** in the app
+to move it across.
+
+The app is signed with the key in `android-signing/` (a debug key), which is
+fine for installing on your own phones. Publishing to the Play Store will need
+a proper private release key.
+
 ## Your data
 
 Everything is stored on the device in the browser's local storage — nothing is

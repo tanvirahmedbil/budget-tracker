@@ -5,7 +5,7 @@
    Everything is stored on this device (localStorage).
    ========================================================= */
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const KEY = 'spent:v1';
 
 const PALETTE = [
@@ -260,8 +260,36 @@ function showOver(list) {
   ));
 }
 
+/* Android app (Capacitor) uses native plugins; the website uses web APIs. */
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const plugin = (name) => (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[name]) || null;
+
+/* 'granted' | 'denied' | 'default' | 'unsupported' */
+async function notifState() {
+  if (NATIVE) {
+    try {
+      const { display } = await plugin('LocalNotifications').checkPermissions();
+      return display === 'granted' ? 'granted' : display === 'denied' ? 'denied' : 'default';
+    } catch (_) { return 'unsupported'; }
+  }
+  return 'Notification' in window ? Notification.permission : 'unsupported';
+}
+async function askNotif() {
+  try {
+    if (NATIVE) await plugin('LocalNotifications').requestPermissions();
+    else await Notification.requestPermission();
+  } catch (_) { /* ignore */ }
+}
+
 async function notify(title, body, tag) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (await notifState() !== 'granted') return;
+  if (NATIVE) {
+    let id = 0;
+    for (const ch of tag) id = (id * 31 + ch.charCodeAt(0)) | 0;
+    try { await plugin('LocalNotifications').schedule({ notifications: [{ id: Math.abs(id) || 1, title, body }] }); }
+    catch (_) { /* in-app alert already shown */ }
+    return;
+  }
   const opts = { body, tag, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png' };
   try {
     const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
@@ -510,28 +538,35 @@ function openEntrySheet(entry) {
    ========================================================= */
 const PER = { day: 'a day', week: 'a week', month: 'a month' };
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isStandalone = () => NATIVE || matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
 function renderLimits() {
-  // Notification state
+  renderNotif();
+  renderLimitList();
+}
+
+async function renderNotif() {
   const n = $('#notif');
-  if (!('Notification' in window)) {
+  const state = await notifState();
+  if (state === 'unsupported') {
     n.innerHTML = isIOS && !isStandalone()
       ? '<div class="notif">On iPhone, add Spent to your Home Screen first — then you can turn on notifications here.</div>'
       : '<div class="notif">This browser can’t show notifications. You’ll still see an alert in the app.</div>';
-  } else if (Notification.permission === 'granted') {
+  } else if (state === 'granted') {
     n.innerHTML = '<div class="notif ok">✓ Notifications are on</div>';
-  } else if (Notification.permission === 'denied') {
+  } else if (state === 'denied') {
     n.innerHTML = '<div class="notif">Notifications are blocked. Allow them for Spent in your phone settings.</div>';
   } else {
     n.innerHTML = '<div class="notif"><span>Want a ping when you go over?</span><button class="pill" id="notif-on">Turn on</button></div>';
     $('#notif-on').onclick = async () => {
-      try { await Notification.requestPermission(); } catch (_) { /* ignore */ }
-      renderLimits();
-      if (Notification.permission === 'granted') notify('You’re all set', 'Spent will ping you when a limit is crossed.', 'hello');
+      await askNotif();
+      renderNotif();
+      if (await notifState() === 'granted') notify('You’re all set', 'Spent will ping you when a limit is crossed.', 'hello');
     };
   }
+}
 
+function renderLimitList() {
   const box = $('#limits');
   if (!db.limits.length) {
     box.innerHTML = '<div class="empty"><h2>None yet.</h2><p>Try “Therapy, 5,000 a month”.</p></div>';
@@ -718,6 +753,15 @@ function openCatSheet(cat, onCreate) {
 }
 
 async function deliver(filename, text, type) {
+  if (NATIVE) {
+    try {
+      const { uri } = await plugin('Filesystem').writeFile({ path: filename, data: text, directory: 'CACHE', encoding: 'utf8' });
+      await plugin('Share').share({ title: filename, files: [uri] });
+    } catch (err) {
+      if (!/cancel/i.test(String(err && err.message))) toast('Could not share the file');
+    }
+    return;
+  }
   const blob = new Blob([text], { type });
   const file = new File([blob], filename, { type });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -792,6 +836,6 @@ window.addEventListener('storage', (ev) => { if (ev.key === KEY) { db = load(); 
 
 go('add');
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+if (!NATIVE && 'serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }

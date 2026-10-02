@@ -1,5 +1,5 @@
 /* Spent service worker: works offline, shows limit notifications. */
-const CACHE = 'spent-1.0.0';
+const CACHE = 'spent-1.1.0';
 const SHELL = [
   './',
   'index.html',

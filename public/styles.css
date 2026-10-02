@@ -14,8 +14,9 @@
 
   --font: 'Bricolage Grotesque', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --nav-h: 64px;
-  --safe-t: env(safe-area-inset-top, 0px);
-  --safe-b: env(safe-area-inset-bottom, 0px);
+  /* Android app injects --safe-area-inset-*; browsers use env() */
+  --safe-t: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-b: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   --ease: cubic-bezier(.2, .8, .2, 1);
   color-scheme: light;
 }
