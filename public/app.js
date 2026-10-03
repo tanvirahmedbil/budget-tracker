@@ -363,7 +363,48 @@ const view = {
   to: today(),
   cat: 'all',
   show: 'cats',
+  compare: false,
 };
+
+/* The period just before the one on screen (same length for a custom range). */
+function prevRange(from, to) {
+  if (view.period === 'range') {
+    const days = Math.round((parse(to) - parse(from)) / 864e5) + 1;
+    return [iso(addDays(parse(from), -days)), iso(addDays(parse(from), -1))];
+  }
+  return bounds(view.period, shift(view.period, view.anchor, -1)).map(iso);
+}
+function prevLabel(from, to) {
+  if (view.period === 'range') return `the ${shortDate(from)} – ${shortDate(to)} before`;
+  if (view.period === 'week') return periodLabel('week', view.anchor) === 'This week' ? 'last week' : `the week of ${shortDate(from)}`;
+  const l = periodLabel(view.period, shift(view.period, view.anchor, -1));
+  return l === 'Yesterday' ? 'yesterday' : l;
+}
+function deltaHTML(now, before, label) {
+  if (!now && !before) return `Nothing spent here or in ${esc(label)}.`;
+  const diff = Math.round((now - before) * 100) / 100;
+  const pct = before ? ` (${diff > 0 ? '+' : '−'}${Math.round(Math.abs(diff) / before * 100)}%)` : '';
+  const head = diff === 0 ? `Same as ${esc(label)}`
+    : diff > 0 ? `<span class="up">↑ ${money(diff)} more than ${esc(label)}${pct}</span>`
+      : `<span class="down">↓ ${money(-diff)} less than ${esc(label)}${pct}</span>`;
+  return `${head}<small>${esc(label[0].toUpperCase() + label.slice(1))}: ${money(before)}</small>`;
+}
+/* Months shown in the compare table, newest first. */
+function compareMonths(from, to) {
+  const out = [];
+  const add = (d) => {
+    const s = iso(d);
+    const e = iso(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+    if (s <= today()) out.push({ d, s: s < from ? from : s, e: e > to ? to : e });
+  };
+  if (view.period === 'month') {
+    for (let i = 5; i >= 0; i--) add(new Date(view.anchor.getFullYear(), view.anchor.getMonth() - i, 1));
+    out.forEach((m) => { m.s = iso(m.d); m.e = iso(new Date(m.d.getFullYear(), m.d.getMonth() + 1, 0)); });
+  } else {
+    for (let d = new Date(parse(from).getFullYear(), parse(from).getMonth(), 1); iso(d) <= to; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) add(d);
+  }
+  return out.slice(-24).reverse();
+}
 
 function viewRange() {
   if (view.period === 'range') return view.from <= view.to ? [view.from, view.to] : [view.to, view.from];
@@ -402,16 +443,52 @@ function renderView() {
   countTo($('#total'), total);
   $('#total-count').textContent = list.length === 1 ? '1 entry' : `${list.length} entries`;
 
+  // Compare (only when asked for)
+  const cmp = $('#compare');
+  cmp.classList.toggle('on', view.compare);
+  cmp.setAttribute('aria-pressed', String(view.compare));
+  cmp.textContent = view.compare ? 'Compare ✕' : 'Compare';
+  const delta = $('#delta');
+  delta.hidden = !view.compare;
+  if (view.compare) {
+    const [pf, pt] = prevRange(from, to);
+    delta.innerHTML = deltaHTML(total, spentIn(view.cat, pf, pt), prevLabel(pf, pt));
+  }
+  const monthsOK = view.compare && view.period !== 'day' && view.period !== 'week';
+
   // Which tables make sense right now
   const segs = [];
+  if (monthsOK) segs.push(['months', 'Months']);
   if (view.cat === 'all') segs.push(['cats', 'Categories']);
   if (view.period !== 'day' && from !== to) segs.push(['days', 'Days']);
   segs.push(['items', 'Items']);
   if (!segs.some(([k]) => k === view.show)) view.show = segs[0][0];
   $('#seg').innerHTML = segs.map(([k, l]) => `<button class="${view.show === k ? 'on' : ''}" data-s="${k}">${l}</button>`).join('');
-  $('#seg').hidden = segs.length < 2 || !list.length;
+  $('#seg').hidden = segs.length < 2 || (!list.length && !monthsOK);
 
   const table = $('#table');
+  if (view.show === 'months') {
+    const months = compareMonths(from, to).map((m) => ({ ...m, amt: spentIn(view.cat, m.s, m.e) }));
+    const max = Math.max(1, ...months.map((m) => m.amt));
+    const sel = view.period === 'month' ? iso(new Date(view.anchor.getFullYear(), view.anchor.getMonth(), 1)) : '';
+    table.innerHTML = `<div class="rows">${months.map((m, i) => {
+      const prev = months[i + 1];
+      let change = '';
+      if (prev && prev.amt) {
+        const p = Math.round(((m.amt - prev.amt) / prev.amt) * 100);
+        change = p === 0 ? '<span class="pct">same</span>' : `<span class="pct ${p > 0 ? 'up' : 'down'}">${p > 0 ? '↑' : '↓'} ${Math.abs(p)}%</span>`;
+      }
+      const o = { month: 'long' };
+      if (m.d.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
+      const isSel = iso(m.d) === sel;
+      return `<button class="r" data-month="${iso(m.d)}">
+        <span class="main"><span class="t" ${isSel ? 'style="color:var(--violet)"' : ''}>${esc(fmt(m.d, o))}</span>
+        <span class="bar"><b style="width:${Math.max(2, (m.amt / max) * 100)}%;background:var(--violet);opacity:${isSel || !sel ? 1 : 0.45}"></b></span></span>
+        <span><span class="amt">${money(m.amt)}</span>${change}</span>
+      </button>`;
+    }).join('')}</div>`;
+    return;
+  }
   if (!list.length) {
     table.innerHTML = '<div class="empty"><h2>Nothing.</h2><p>No spending here yet.</p></div>';
     return;
@@ -464,6 +541,7 @@ $('#periods').addEventListener('click', (ev) => {
   if (!b) return;
   view.period = b.dataset.p;
   view.anchor = new Date();
+  if (view.compare) view.show = 'months';
   renderView();
 });
 $('#prev').addEventListener('click', () => { view.anchor = shift(view.period, view.anchor, -1); renderView(); });
@@ -474,7 +552,13 @@ $('#view-cats').addEventListener('click', (ev) => {
   const b = ev.target.closest('.chip');
   if (!b) return;
   view.cat = b.dataset.id;
-  if (view.cat !== 'all') view.show = 'items';
+  if (view.cat !== 'all' && view.show !== 'months') view.show = 'items';
+  renderView();
+});
+$('#compare').addEventListener('click', () => {
+  view.compare = !view.compare;
+  if (view.compare && view.period !== 'day' && view.period !== 'week') view.show = 'months';
+  if (!view.compare && view.show === 'months') view.show = 'cats';
   renderView();
 });
 $('#seg').addEventListener('click', (ev) => {
@@ -487,6 +571,7 @@ $('#table').addEventListener('click', (ev) => {
   const r = ev.target.closest('.r');
   if (!r) return;
   if (r.dataset.cat) { view.cat = r.dataset.cat; view.show = 'items'; renderView(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  else if (r.dataset.month) { view.period = 'month'; view.anchor = parse(r.dataset.month); renderView(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   else if (r.dataset.day) { view.period = 'day'; view.anchor = parse(r.dataset.day); view.show = 'items'; renderView(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   else if (r.dataset.entry) openEntrySheet(db.entries.find((e) => e.id === r.dataset.entry));
 });

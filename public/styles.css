@@ -212,7 +212,16 @@ input { font: inherit; color: inherit; }
 .total { margin: 30px 0 26px; }
 .total .eyebrow { margin: 0 0 8px; }
 .total .display { letter-spacing: -0.035em; }
-.total .muted { margin: 10px 0 0; font-size: 16px; font-weight: 600; }
+.total .muted { margin: 0; font-size: 16px; font-weight: 600; }
+.total-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.compare { height: 36px; padding: 0 14px; font-size: 15px; background: transparent; border: 2px solid var(--line); color: var(--muted); }
+.compare.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.delta { margin: 16px 0 0; font-size: 18px; font-weight: 700; line-height: 1.35; animation: rise .35s var(--ease) both; }
+.delta small { display: block; margin-top: 2px; font-size: 15px; font-weight: 600; color: var(--muted); }
+.up { color: var(--red); }
+.down { color: var(--green); }
+.r .pct.up { color: var(--red); font-weight: 700; }
+.r .pct.down { color: var(--green); font-weight: 700; }
 
 .seg {
   display: flex; padding: 4px;
