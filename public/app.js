@@ -5,7 +5,7 @@
    Everything is stored on this device (localStorage).
    ========================================================= */
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const KEY = 'spent:v1';
 
 const PALETTE = [
@@ -333,7 +333,7 @@ function saveEntry() {
   document.activeElement && document.activeElement.blur();
   renderAdd();
   pop($('#sofar'));
-  toast(`Saved · ${money(amount)} · ${catById(e.cat).name}`);
+  toast(`Spent · ${money(amount)} · ${catById(e.cat).name}`);
 }
 
 $('#add-cats').addEventListener('click', (ev) => {
