@@ -868,7 +868,9 @@ function exportCSV() {
   deliver(`spent-${today()}.csv`, rows.map((r) => r.map(q).join(',')).join('\n'), 'text/csv');
 }
 function exportJSON() {
-  deliver(`spent-backup-${today()}.json`, JSON.stringify(db, null, 2), 'application/json');
+  const n = db.limits.length;
+  deliver(`spent-backup-${today()}.json`, JSON.stringify({ ...db, exportedAt: new Date().toISOString() }, null, 2), 'application/json');
+  toast(`Backup has ${db.entries.length} entries · ${n} ${n === 1 ? 'limit' : 'limits'}`);
 }
 function importJSON(ev) {
   const f = ev.target.files[0];
@@ -879,8 +881,13 @@ function importJSON(ev) {
     try {
       const d = JSON.parse(r.result);
       if (!d || !Array.isArray(d.entries)) throw new Error('bad');
-      if (!confirm(`Restore ${d.entries.length} entries? This replaces what’s on this phone now.`)) return;
-      db = normalize(d); persist(); add.cat = null; refresh(); toast('Restored');
+      const lim = Array.isArray(d.limits) ? d.limits.length : 0;
+      const cats = Array.isArray(d.cats) ? d.cats.filter((c) => !c.archived).length : 0;
+      const when = d.exportedAt ? `\nMade ${new Date(d.exportedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}.` : '';
+      const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+      if (!confirm(`This backup has ${plural(d.entries.length, 'entry').replace('entrys', 'entries')}, ${plural(lim, 'limit')} and ${plural(cats, 'category').replace('categorys', 'categories')}.${when}\n\nRestore it? This replaces what’s on this phone now.`)) return;
+      db = normalize(d); persist(); add.cat = null; refresh();
+      toast(`Restored · ${plural(lim, 'limit')}`);
     } catch (_) { toast('That file isn’t a Spent backup'); }
   };
   r.readAsText(f);
