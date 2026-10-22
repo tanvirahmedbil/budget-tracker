@@ -5,7 +5,7 @@
    Everything is stored on this device (localStorage).
    ========================================================= */
 
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 const KEY = 'spent:v1';
 
 const PALETTE = [
